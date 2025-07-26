@@ -1078,6 +1078,11 @@ namespace UnityEngine.Rendering
             m_VertexSampling = value;
         }
 
+        internal void ForceMemoryBudget(ProbeVolumeTextureMemoryBudget budget)
+        {
+            m_MemoryBudget = budget;
+        }
+
         // This is used for steps such as dilation that require the maximum order allowed to be loaded at all times. Should really never be used as a general purpose function.
         internal void ForceSHBand(ProbeVolumeSHBands shBands)
         {
@@ -1388,7 +1393,7 @@ namespace UnityEngine.Rendering
                 return;
             }
 
-            if (m_CurrentBakingSet != null && bakingSet != m_CurrentBakingSet)
+            if (m_CurrentBakingSet != null && !m_CurrentBakingSet.HasSameSceneGUIDs(bakingSet))
             {
                 // Trying to load data for a scene from a different baking set than currently loaded ones.
                 // This should not throw an error, but it's not supported
@@ -1680,6 +1685,9 @@ namespace UnityEngine.Rendering
             //Ensure that all currently loaded scenes belong to the same set.
             foreach (var data in perSceneDataList)
             {
+                if (UnityEditor.SceneManagement.EditorSceneManager.IsPreviewScene(data.gameObject.scene))
+                    continue; // Ignore preview scenes - they are needed to make closed subscenes work
+
                 var set = ProbeVolumeBakingSet.GetBakingSetForScene(data.gameObject.scene);
                 if (set != bakingSet)
                     return false;

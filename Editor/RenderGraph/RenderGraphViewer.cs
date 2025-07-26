@@ -1725,7 +1725,6 @@ namespace UnityEditor.Rendering
                 m_PassFilter = (PassFilter)EditorPrefs.GetInt(kPassFilterEditorPrefsKey);
             if (EditorPrefs.HasKey(kResourceFilterEditorPrefsKey))
                 m_ResourceFilter = (ResourceFilter)EditorPrefs.GetInt(kResourceFilterEditorPrefsKey);
-
         }
 
         void CreateGUI()

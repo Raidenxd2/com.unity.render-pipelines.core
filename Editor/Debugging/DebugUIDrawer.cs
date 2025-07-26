@@ -180,7 +180,6 @@ namespace UnityEditor.Rendering
             public TValue new_value;
         }
 
-        static List<WidgetChangedAction> s_Analytic = new List<WidgetChangedAction>();
         /// <summary>
         /// Implement this to execute processing after UI rendering.
         /// </summary>
@@ -192,14 +191,6 @@ namespace UnityEditor.Rendering
             {
                 var w = Cast<TField>(widget);
                 var s = Cast<TState>(state);
-
-                s_Analytic.Clear();
-                s_Analytic.Add(new()
-                {
-                    query_path = widget.queryPath,
-                    previous_value = w.GetValue(),
-                    new_value = value
-                });
 
                 Apply(w, s, value);
             }

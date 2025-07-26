@@ -172,7 +172,6 @@ namespace UnityEditor.Rendering
                 && selectedPanelIndex < panels.Count
                 && panels[selectedPanelIndex].editorForceUpdate)
                 EditorApplication.update += Repaint;
-
         }
 
         // Note: this won't get called if the window is opened when the editor itself is closed

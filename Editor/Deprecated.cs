@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.UIElements;
 
 namespace UnityEditor.Rendering
 {
@@ -15,31 +16,54 @@ namespace UnityEditor.Rendering
     }
 
     /// <summary>
-    /// This attributes tells a <see cref="VolumeComponentEditor"/> class which type of
-    /// <see cref="VolumeComponent"/> it's an editor for.
-    /// When you make a custom editor for a component, you need put this attribute on the editor
-    /// class.
+    /// This attribute tells the <see cref="VolumeComponentEditor"/> class which type of
+    /// <see cref="VolumeComponent"/> it is an editor for. It is used to associate a custom editor
+    /// with a specific volume component, enabling the editor to handle its custom properties and settings.
     /// </summary>
+    /// <remarks>
+    /// When creating a custom editor for a <see cref="VolumeComponent"/>, this attribute must be applied
+    /// to the editor class to ensure it targets the appropriate component. This functionality has been deprecated,
+    /// and developers are encouraged to use the <see cref="CustomEditor"/> attribute instead for newer versions.
+    ///
+    /// The attribute specifies which <see cref="VolumeComponent"/> type the editor class is responsible for.
+    /// Typically, it is used in conjunction with custom editor UI drawing and handling logic for the specified volume component.
+    /// This provides a way for developers to create custom editing tools for their volume components in the Unity Inspector.
+    ///
+    /// Since Unity 2022.2, this functionality has been replaced by the <see cref="CustomEditor"/> attribute, and as such,
+    /// it is advised to update any existing custom editors to use the newer approach.
+    /// </remarks>
     /// <seealso cref="VolumeComponentEditor"/>
+    /// <seealso cref="CustomEditor"/>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
     [Obsolete("VolumeComponentEditor property has been deprecated. Please use CustomEditor. #from(2022.2)")]
     public sealed class VolumeComponentEditorAttribute : CustomEditor
     {
         /// <summary>
-        /// A type derived from <see cref="VolumeComponent"/>.
+        /// A type derived from <see cref="VolumeComponent"/> that this editor is responsible for.
         /// </summary>
+        /// <remarks>
+        /// This field holds the type of the volume component that the editor class will handle.
+        /// The type should be a subclass of <see cref="VolumeComponent"/> and is used to associate the editor
+        /// with the specific component type.
+        /// </remarks>
         public readonly Type componentType;
 
         /// <summary>
         /// Creates a new <see cref="VolumeComponentEditorAttribute"/> instance.
         /// </summary>
-        /// <param name="componentType">A type derived from <see cref="VolumeComponent"/></param>
+        /// <param name="componentType">A type derived from <see cref="VolumeComponent"/> that the editor is responsible for.</param>
+        /// <remarks>
+        /// This constructor initializes the attribute with the component type that the editor will target.
+        /// The component type is a subclass of <see cref="VolumeComponent"/> and provides the necessary
+        /// context for the editor class to function properly within the Unity Editor.
+        /// </remarks>
         public VolumeComponentEditorAttribute(Type componentType)
             : base(componentType, true)
         {
             this.componentType = componentType;
         }
     }
+
 
     /// <summary>
     /// Interface that should be used with [ScriptableRenderPipelineExtension(type))] attribute to dispatch ContextualMenu calls on the different SRPs
@@ -159,7 +183,28 @@ namespace UnityEditor.Rendering
         }
     }
 
+    public abstract partial class DefaultVolumeProfileSettingsPropertyDrawer
+    {        
+        /// <summary>
+        /// Context menu implementation for Default Volume Profile.
+        /// </summary>
+        /// <typeparam name="TSetting">Default Volume Profile Settings type</typeparam>
+        /// <typeparam name="TRenderPipeline">Render Pipeline type</typeparam>
+        [Obsolete("Use DefaultVolumeProfileSettingsPropertyDrawer<T>.DefaultVolumeProfileSettingsContextMenu2<TSetting, TRenderPipeline> instead #from(6000.0)")]
+        public abstract class DefaultVolumeProfileSettingsContextMenu<TSetting, TRenderPipeline> : IRenderPipelineGraphicsSettingsContextMenu<TSetting>
+            where TSetting : class, IDefaultVolumeProfileSettings
+            where TRenderPipeline : RenderPipeline
+        {
+            /// <summary>
+            /// Path where new Default Volume Profile will be created.
+            /// </summary>
+            [Obsolete("Not used anymore. #from(6000.0)")]
+            protected abstract string defaultVolumeProfilePath { get; }
 
+            [Obsolete("Not used anymore. #from(6000.0)")]
+            void IRenderPipelineGraphicsSettingsContextMenu<TSetting>.PopulateContextMenu(TSetting setting, PropertyDrawer property, ref GenericMenu menu){ }
+        }
+    }
 
     /// <summary>
     /// Builtin Drawer for Maskfield Debug Items.

@@ -748,8 +748,7 @@ namespace UnityEngine.Rendering
             for (int i = 0; i < perSceneData.Count; ++i)
             {
                 var data = perSceneData[i];
-                var scene = data.gameObject.scene;
-                var sceneGUID = scene.GetGUID();
+                var sceneGUID = data.sceneGUID;
                 var bakingSet = ProbeVolumeBakingSet.GetBakingSetForScene(sceneGUID);
 
                 if (bakingSet == null)
@@ -757,7 +756,8 @@ namespace UnityEngine.Rendering
                     if (isBakingSingleScene)
                         continue;
 
-                    Debug.LogError($"Scene '{scene.name}' does not belong to any Baking Set. Please add it to a Baking Set in the Adaptive Probe Volumes tab of the Lighting Window.");
+                    var sceneName = data.gameObject.scene.name;
+                    Debug.LogError($"Scene '{sceneName}' does not belong to any Baking Set. Please add it to a Baking Set in the Adaptive Probe Volumes tab of the Lighting Window.");
                     return false;
                 }
 
@@ -938,8 +938,11 @@ namespace UnityEngine.Rendering
 
         static bool InitializeBake()
         {
-            if (ProbeVolumeLightingTab.instance?.PrepareAPVBake() == false) return false;
-            if (!ProbeReferenceVolume.instance.isInitialized || !ProbeReferenceVolume.instance.enabledBySRP) return false;
+            if (ProbeVolumeLightingTab.instance?.PrepareAPVBake(ProbeReferenceVolume.instance) == false)
+                return false;
+
+            if (!ProbeReferenceVolume.instance.isInitialized || !ProbeReferenceVolume.instance.enabledBySRP)
+                return false;
 
             using var scope = new BakingSetupProfiling(BakingSetupProfiling.Stages.PrepareWorldSubdivision);
 
@@ -954,13 +957,16 @@ namespace UnityEngine.Rendering
                 }
             }
 
-            if (ProbeReferenceVolume.instance.perSceneDataList.Count == 0) return false;
+            if (ProbeReferenceVolume.instance.perSceneDataList.Count == 0)
+                return false;
 
             var sceneDataList = GetPerSceneDataList();
-            if (sceneDataList.Count == 0) return false;
+            if (sceneDataList.Count == 0)
+                return false;
 
             var pvList = GetProbeVolumeList();
-            if (pvList.Count == 0) return false; // We have no probe volumes.
+            if (pvList.Count == 0)
+                return false; // We have no probe volumes.
 
             CachePVHashes(pvList);
 
@@ -1413,11 +1419,14 @@ namespace UnityEngine.Rendering
             if (m_BakingSet.hasDilation)
             {
                 // This subsequent block needs to happen AFTER we call WriteBakingCells.
-                // Otherwise in cases where we change the spacing between probes, we end up loading cells with a certain layout in ForceSHBand
+                // Otherwise, in cases where we change the spacing between probes, we end up loading cells with a certain layout in ForceSHBand
                 // And then we unload cells using the wrong layout in PerformDilation (after WriteBakingCells updates the baking set object) which leads to a broken internal state.
 
                 // Don't use Disk streaming to avoid having to wait for it when doing dilation.
                 probeRefVolume.ForceNoDiskStreaming(true);
+                // Increase the memory budget to make sure we can fit the current cell and all its neighbors when doing dilation.
+                var prevMemoryBudget = probeRefVolume.memoryBudget;
+                probeRefVolume.ForceMemoryBudget(ProbeVolumeTextureMemoryBudget.MemoryBudgetHigh);
                 // Force maximum sh bands to perform baking, we need to store what sh bands was selected from the settings as we need to restore it after.
                 var prevSHBands = probeRefVolume.shBands;
                 probeRefVolume.ForceSHBand(ProbeVolumeSHBands.SphericalHarmonicsL2);
@@ -1428,8 +1437,9 @@ namespace UnityEngine.Rendering
                 using (new BakingCompleteProfiling(BakingCompleteProfiling.Stages.PerformDilation))
                     PerformDilation();
 
-                // Need to restore the original state
+                // Restore the original state.
                 probeRefVolume.ForceNoDiskStreaming(false);
+                probeRefVolume.ForceMemoryBudget(prevMemoryBudget);
                 probeRefVolume.ForceSHBand(prevSHBands);
             }
             else
