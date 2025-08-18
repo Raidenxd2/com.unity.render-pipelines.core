@@ -30,34 +30,7 @@ namespace UnityEngine.Rendering
             message = string.Empty;
             severity = LogType.Log;
 
-            // The GPUResidentDrawer only has support when the RawBuffer path of providing data
-            // ConstantBuffer path and any other unsupported platforms early out here
-            if (BatchRendererGroup.BufferTarget != BatchBufferTarget.RawBuffer)
-            {
-                severity = LogType.Warning;
-                message  = Strings.rawBufferNotSupportedByPlatform;
-                return false;
-            }
-
-#if UNITY_EDITOR
-            // Check the build target is supported by checking the depth downscale kernel (which has an only_renderers pragma) is present
-            var resources = GraphicsSettings.GetRenderPipelineSettings<GPUResidentDrawerResources>();
-            if (!(resources.occluderDepthPyramidKernels && resources.occluderDepthPyramidKernels.HasKernel("OccluderDepthDownscale")))
-            {
-                severity = LogType.Warning;
-                message  = Strings.kernelNotPresent;
-                return false;
-            }
-
-            if (EditorGraphicsSettings.batchRendererGroupShaderStrippingMode != BatchRendererGroupStrippingMode.KeepAll)
-            {
-                severity = LogType.Warning;
-                message = Strings.batchRendererGroupShaderStrippingModeInvalid;
-                return false;
-            }
-#endif
-
-            return true;
+            return false;
         }
 
         internal static bool IsGPUResidentDrawerSupportedBySRP(GPUResidentDrawerSettings settings, out string message, out LogType severity)
