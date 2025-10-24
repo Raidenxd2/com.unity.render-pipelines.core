@@ -1,3 +1,4 @@
+#if !SRP_CORE_DISABLE_FREECAMERA
 #if ENABLE_INPUT_SYSTEM && ENABLE_INPUT_SYSTEM_PACKAGE
 #define USE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -201,3 +202,4 @@ namespace UnityEngine.Rendering
         }
     }
 }
+#endif
