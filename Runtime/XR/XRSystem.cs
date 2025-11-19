@@ -49,6 +49,9 @@ namespace UnityEngine.Experimental.Rendering
 #if ENABLE_VR && ENABLE_XR_MODULE
         // Occlusion Mesh scaling factor
         static float s_OcclusionMeshScaling = 1.0f;
+
+        // Return true if wants to enable visibility mesh passes
+        static bool s_UseVisibilityMesh = true;
 #endif
 
         // Internal resources used by XR rendering
@@ -184,6 +187,29 @@ namespace UnityEngine.Experimental.Rendering
         }
 
         /// <summary>
+        /// Used by the render pipeline to enable all visibility meshes passes.
+        /// </summary>
+        /// <param name="useVisibilityMesh">True to enable visibility mesh passes, false to disable them. </param>
+        internal static void SetUseVisibilityMesh(bool useVisibilityMesh)
+        {
+#if ENABLE_VR && ENABLE_XR_MODULE
+            s_UseVisibilityMesh = useVisibilityMesh;
+#endif
+        }
+
+        /// <summary>
+        /// Returned value used by the render pipeline to use all visibility mesh passes.
+        /// </summary>
+        internal static bool GetUseVisibilityMesh()
+        {
+#if ENABLE_VR && ENABLE_XR_MODULE
+            return s_UseVisibilityMesh;
+#else
+            return false;
+#endif
+        }
+
+        /// <summary>
         /// Used to communicate to the XR device how to render the XR MirrorView. Note: not all blit modes are supported by all providers. Blitmode set here serves as preference purpose.
         /// </summary>
         /// <param name="mirrorBlitMode"> Mirror view mode to be set as preferred. See `XRMirrorViewBlitMode` for the builtin blit modes. </param>
@@ -228,17 +254,60 @@ namespace UnityEngine.Experimental.Rendering
 
 
         /// <summary>
-        /// Used by the render pipeline to retrieve the renderViewportScale value from the XR display.
+        /// Used by the render pipeline to retrieve the applied renderViewportScale value from the XR display.
         /// One use case for retriving this value is that render pipeline can properly sync some SRP owned textures to scale accordingly
         /// </summary>
-        /// <returns> Returns current scaleOfAllViewports value from the XRDisplaySubsystem. </returns>
+        /// <returns> Returns current appliedViewportScale value from the XRDisplaySubsystem. </returns>
         public static float GetRenderViewportScale()
         {
 #if ENABLE_VR && ENABLE_XR_MODULE
 
-            return s_Display.scaleOfAllViewports;
+            return s_Display.appliedViewportScale;
 #else
             return 1.0f;
+#endif
+        }
+
+        /// <summary>
+        /// Used by the render pipeline to retrieve the DynamicResolutionScale value from the XR display.
+        /// One use case for retrieving this value is that render pipeline can properly sync some SRP owned textures to scale accordingly
+        /// </summary>
+        /// <returns> Returns current DynamicResolutionScale value from the XRDisplaySubsystem. </returns>
+        public static float GetDynamicResolutionScale()
+        {
+#if ENABLE_VR && ENABLE_XR_MODULE
+
+            return s_Display.globalDynamicScale;
+#else
+            return 1.0f;
+#endif
+        }
+
+        /// <summary>
+        /// Used by the render pipeline to calculate texture scaled width for XR display if it supports dynamic resolution
+        /// </summary>
+        /// <param name="texture">Input texture that supports dynamic resolution</param>
+        /// <returns> Returns current scaled width of the input texture. </returns>
+        public static int ScaleTextureWidthForXR(RenderTexture texture)
+        {
+#if ENABLE_VR && ENABLE_XR_MODULE
+            return s_Display.ScaledTextureWidth(texture);
+#else
+            return 1;
+#endif
+        }
+
+        /// <summary>
+        /// Used by the render pipeline to calculate texture scaled height for XR display if it supports dynamic resolution
+        /// </summary>
+        /// <param name="texture">Input texture that supports dynamic resolution</param>
+        /// <returns> Returns current scaled width of the input texture. </returns>
+        public static int ScaleTextureHeightForXR(RenderTexture texture)
+        {
+#if ENABLE_VR && ENABLE_XR_MODULE
+            return s_Display.ScaledTextureHeight(texture);
+#else
+            return 1;
 #endif
         }
 
@@ -369,7 +438,7 @@ namespace UnityEngine.Experimental.Rendering
                 int renderParameterCount = renderPass.GetRenderParameterCount();
                 if (CanUseSinglePass(camera, renderPass))
                 {
-                    var createInfo = BuildPass(renderPass, cullingParams, layout);
+                    var createInfo = BuildPass(renderPass, cullingParams, layout, renderPassIndex == s_Display.GetRenderPassCount() - 1);
                     var xrPass = s_PassAllocator(createInfo);
 
                     for (int renderParamIndex = 0; renderParamIndex < renderParameterCount; ++renderParamIndex)
@@ -383,7 +452,7 @@ namespace UnityEngine.Experimental.Rendering
                 {
                     for (int renderParamIndex = 0; renderParamIndex < renderParameterCount; ++renderParamIndex)
                     {
-                        var createInfo = BuildPass(renderPass, cullingParams, layout);
+                        var createInfo = BuildPass(renderPass, cullingParams, layout, renderPassIndex == s_Display.GetRenderPassCount() - 1);
                         var xrPass = s_PassAllocator(createInfo);
                         AddViewToPass(xrPass, renderPass, renderParamIndex);
                         layout.AddPass(camera, xrPass);
@@ -436,6 +505,9 @@ namespace UnityEngine.Experimental.Rendering
             if (renderParam0.textureArraySlice != 0 || renderParam1.textureArraySlice != 1)
                 return false;
 
+            if (renderParam0.viewport != renderParam1.viewport)
+                return false;
+
             return true;
         }
 
@@ -443,15 +515,17 @@ namespace UnityEngine.Experimental.Rendering
         {
             // Convert viewport from normalized to screen space
             Rect viewport = renderParameter.viewport;
-            viewport.x      *= renderPass.renderTargetDesc.width;
-            viewport.width  *= renderPass.renderTargetDesc.width;
-            viewport.y      *= renderPass.renderTargetDesc.height;
-            viewport.height *= renderPass.renderTargetDesc.height;
+            
+            viewport.x      *= renderPass.renderTargetScaledWidth;
+            viewport.width  *= renderPass.renderTargetScaledWidth;
+            viewport.y      *= renderPass.renderTargetScaledHeight;
+            viewport.height *= renderPass.renderTargetScaledHeight;
 
             // XRTODO : remove this line and use XRSettings.useOcclusionMesh instead when it's fixed
             Mesh occlusionMesh = XRGraphicsAutomatedTests.running ? null : renderParameter.occlusionMesh;
+            Mesh visibleMesh = XRGraphicsAutomatedTests.running ? null : renderParameter.visibleMesh;
 
-            return new XRView(renderParameter.projection, renderParameter.view, renderParameter.previousView, renderParameter.isPreviousViewValid, viewport, occlusionMesh, renderParameter.textureArraySlice);
+            return new XRView(renderParameter.projection, renderParameter.view, renderParameter.previousView, renderParameter.isPreviousViewValid, viewport, occlusionMesh, visibleMesh, renderParameter.textureArraySlice);
         }
 
         private static RenderTextureDescriptor XrRenderTextureDescToUnityRenderTextureDesc(RenderTextureDescriptor xrDesc)
@@ -468,13 +542,15 @@ namespace UnityEngine.Experimental.Rendering
             return rtDesc;
         }
 
-        static XRPassCreateInfo BuildPass(XRDisplaySubsystem.XRRenderPass xrRenderPass, ScriptableCullingParameters cullingParameters, XRLayout layout)
+        static XRPassCreateInfo BuildPass(XRDisplaySubsystem.XRRenderPass xrRenderPass, ScriptableCullingParameters cullingParameters, XRLayout layout, bool isLastPass)
         {    
             XRPassCreateInfo passInfo = new XRPassCreateInfo
             {
                 renderTarget            = xrRenderPass.renderTarget,
                 renderTargetDesc        = XrRenderTextureDescToUnityRenderTextureDesc(xrRenderPass.renderTargetDesc),
-                hasMotionVectorPass     = xrRenderPass.hasMotionVectorPass,
+                renderTargetScaledWidth = xrRenderPass.renderTargetScaledWidth,
+                renderTargetScaledHeight = xrRenderPass.renderTargetScaledHeight,
+                hasMotionVectorPass      = xrRenderPass.hasMotionVectorPass,
                 motionVectorRenderTarget = xrRenderPass.motionVectorRenderTarget,
                 motionVectorRenderTargetDesc = XrRenderTextureDescToUnityRenderTextureDesc(xrRenderPass.motionVectorRenderTargetDesc),
                 cullingParameters       = cullingParameters,
@@ -484,7 +560,9 @@ namespace UnityEngine.Experimental.Rendering
                 multipassId             = layout.GetActivePasses().Count,
                 cullingPassId           = xrRenderPass.cullingPassIndex,
                 copyDepth               = xrRenderPass.shouldFillOutDepth,
-                xrSdkRenderPass         = xrRenderPass
+                spaceWarpRightHandedNDC = xrRenderPass.spaceWarpRightHandedNDC,
+                xrSdkRenderPass         = xrRenderPass,
+                isLastCameraPass        = isLastPass
             };
 
             return passInfo;

@@ -50,7 +50,7 @@ namespace UnityEngine.Rendering
         [Conditional("DEVELOPMENT_BUILD"), Conditional("UNITY_EDITOR")]
         protected internal void ThrowIfRasterNotAllowed()
         {
-            if (m_ExecutingPass != null && !m_ExecutingPass.HasRenderAttachments()) throw new InvalidOperationException($"{m_ExecutingPass.name}: Using raster commands from a pass with no active render targets is not allowed as it will use an undefined render target state. Please set-up the pass's render targets using SetRenderAttachments.");
+            if (m_ExecutingPass != null && !m_ExecutingPass.HasRenderAttachments()) throw new InvalidOperationException($"{m_ExecutingPass.name}: Using raster commands from a pass with no active render target is not allowed as it will use an undefined render target state. Please set up pass render targets using SetRenderAttachments.");
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace UnityEngine.Rendering
         /// Throws an exception if the texture handle is not properly registered for the pass or being used incorrectly.
         /// </exception>
         [Conditional("DEVELOPMENT_BUILD"), Conditional("UNITY_EDITOR")]
-        protected internal void ValidateTextureHandle(TextureHandle h)
+        protected internal void ValidateTextureHandle(in TextureHandle h)
         {
             if(RenderGraph.enableValidityChecks)
             {
@@ -71,13 +71,13 @@ namespace UnityEngine.Rendering
 
                 if (h.IsBuiltin()) return;
 
-                if (!m_ExecutingPass.IsRead(h.handle) && !m_ExecutingPass.IsWritten(h.handle))
+                if (!m_ExecutingPass.IsRead(h.handle) && !m_ExecutingPass.IsWritten(h.handle) && !m_ExecutingPass.IsTransient(h.handle))
                 {
-                    throw new Exception("Pass '" + m_ExecutingPass.name + "' is trying to use a texture on the command buffer that was never registered with the pass builder. Please indicate the texture use to the pass builder.");
+                    throw new Exception($"Pass '{m_ExecutingPass.name}' is trying to bind a texture on the command buffer that is not registered by its builder. Please indicate to the pass builder how the texture is used (UseTexture/CreateTransientTexture).");
                 }
                 if (m_ExecutingPass.IsAttachment(h))
                 {
-                    throw new Exception("Pass '" + m_ExecutingPass.name + "' is using a texture as a fragment attachment (SetRenderAttachment/SetRenderAttachmentDepth) but is also trying to bind it as regular texture. Please fix this pass. ");
+                        throw new Exception($"Pass '{m_ExecutingPass.name}' is trying to bind a texture on the command buffer that is already set as a fragment attachment (SetRenderAttachment/SetRenderAttachmentDepth). A texture cannot be used as both in one pass, please fix its usage in the pass builder.");
                 }
             }
         }
@@ -91,19 +91,19 @@ namespace UnityEngine.Rendering
         /// Throws an exception if the texture handle is either not registered as a readable resource or misused as both an attachment and a regular texture.
         /// </exception>
         [Conditional("DEVELOPMENT_BUILD"), Conditional("UNITY_EDITOR")]
-        protected internal void ValidateTextureHandleRead(TextureHandle h)
+        protected internal void ValidateTextureHandleRead(in TextureHandle h)
         {
-            if(RenderGraph.enableValidityChecks)
+            if (RenderGraph.enableValidityChecks)
             {
                 if (m_ExecutingPass == null) return;
 
-                if (!m_ExecutingPass.IsRead(h.handle))
+                if (!m_ExecutingPass.IsRead(h.handle) && !m_ExecutingPass.IsTransient(h.handle))
                 {
-                    throw new Exception("Pass '" + m_ExecutingPass.name + "' is trying to read a texture on the command buffer that was never registered with the pass builder. Please indicate the texture as read to the pass builder.");
+                    throw new Exception($"Pass '{m_ExecutingPass.name}' is trying to read a texture on the command buffer that is not registered by its builder. Please indicate to the pass builder that the texture is read (UseTexture/CreateTransientTexture).");
                 }
                 if (m_ExecutingPass.IsAttachment(h))
                 {
-                    throw new Exception("Pass '" + m_ExecutingPass.name + "' is using a texture as a fragment attachment (SetRenderAttachment/SetRenderAttachmentDepth) but is also trying to bind it as regular texture. Please fix this pass. ");
+                    throw new Exception($"Pass '{m_ExecutingPass.name}' is trying to bind a texture on the command buffer that is already set as a fragment attachment (SetRenderAttachment/SetRenderAttachmentDepth). A texture cannot be used as both in one pass, please fix its usage in the pass builder.");
                 }
             }
         }
@@ -118,7 +118,7 @@ namespace UnityEngine.Rendering
         /// Throws an exception if the texture handle is not registered for writing, attempts to write to a built-in texture, or is misused as both a writeable resource and a render target attachment.
         /// </exception>
         [Conditional("DEVELOPMENT_BUILD"), Conditional("UNITY_EDITOR")]
-        protected internal void ValidateTextureHandleWrite(TextureHandle h)
+        protected internal void ValidateTextureHandleWrite(in TextureHandle h)
         {
             if(RenderGraph.enableValidityChecks)
             {
@@ -129,13 +129,14 @@ namespace UnityEngine.Rendering
                     throw new Exception("Pass '" + m_ExecutingPass.name + "' is trying to write to a built-in texture. This is not allowed built-in textures are small default resources like `white` or `black` that cannot be written to.");
                 }
 
-                if (!m_ExecutingPass.IsWritten(h.handle))
+                if (!m_ExecutingPass.IsWritten(h.handle) && !m_ExecutingPass.IsTransient(h.handle))
                 {
-                    throw new Exception("Pass '" + m_ExecutingPass.name + "' is trying to write a texture on the command buffer that was never registered with the pass builder. Please indicate the texture as written to the pass builder.");
+                    throw new Exception($"Pass '{m_ExecutingPass.name}' is trying to write a texture on the command buffer that is not registered by its builder. Please indicate to the pass builder that the texture is written (UseTexture/CreateTransientTexture).");
                 }
                 if (m_ExecutingPass.IsAttachment(h))
                 {
-                    throw new Exception("Pass '" + m_ExecutingPass.name + "' is using a texture as a fragment attachment (SetRenderAttachment/SetRenderAttachmentDepth) but is also trying to bind it as regular texture. Please fix this pass. ");
+                        throw new Exception($"Pass '{m_ExecutingPass.name}' is trying to bind a texture on the command buffer that is already set as a fragment attachment (SetRenderAttachment/SetRenderAttachmentDepth). A texture cannot be used as both in one pass, please fix its usage in the pass builder.");
+
                 }
             }
         }

@@ -1,4 +1,3 @@
-using NUnit.Framework;
 using UnityEngine.Serialization;
 
 namespace UnityEngine.Rendering
@@ -467,6 +466,7 @@ namespace UnityEngine.Rendering
     }
 
     /// <summary> LensFlareDataSRP defines a Lens Flare with a set of LensFlareDataElementSRP </summary>
+    [CurrentPipelineHelpURL("shared/lens-flare/lens-flare-asset")]
     [System.Serializable]
     public sealed class LensFlareDataSRP : ScriptableObject
     {

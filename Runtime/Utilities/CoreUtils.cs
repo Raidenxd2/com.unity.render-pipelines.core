@@ -1,11 +1,18 @@
 using System;
+using System.Collections;
 using System.IO;
-using System.Linq;
 using System.Collections.Generic;
 using UnityEngine.Experimental.Rendering;
+using System.Runtime.CompilerServices;
+
+#if UNITY_EDITOR
+using UnityEditor;
+using System.Reflection;
+#endif
 
 namespace UnityEngine.Rendering
 {
+    using static UnityEngine.Rendering.HableCurve;
     using UnityObject = UnityEngine.Object;
 
     /// <summary>
@@ -97,34 +104,36 @@ namespace UnityEngine.Rendering
             /// <summary>Game Object Menu priority</summary>
             public const int gameObjectMenuPriority = 10;
             /// <summary>Lens Flare Priority</summary>
-            public const int srpLensFlareMenuPriority = 303;
+            public const int srpLensFlareMenuPriority = 9;
+            /// <summary>Scripting Priority</summary>
+            public const int scriptingPriority = 40;
         }
 
-        const string obsoletePriorityMessage = "Use CoreUtils.Priorities instead";
+        const string obsoletePriorityMessage = "Use CoreUtils.Priorities instead. #from(2021.2)";
 
         /// <summary>Edit Menu priority 1</summary>
-        [Obsolete(obsoletePriorityMessage, false)]
+        [Obsolete(obsoletePriorityMessage)]
         public const int editMenuPriority1 = 320;
         /// <summary>Edit Menu priority 2</summary>
-        [Obsolete(obsoletePriorityMessage, false)]
+        [Obsolete(obsoletePriorityMessage)]
         public const int editMenuPriority2 = 331;
         /// <summary>Edit Menu priority 3</summary>
-        [Obsolete(obsoletePriorityMessage, false)]
+        [Obsolete(obsoletePriorityMessage)]
         public const int editMenuPriority3 = 342;
         /// <summary>Edit Menu priority 4</summary>
-        [Obsolete(obsoletePriorityMessage, false)]
+        [Obsolete(obsoletePriorityMessage)]
         public const int editMenuPriority4 = 353;
         /// <summary>Asset Create Menu priority 1</summary>
-        [Obsolete(obsoletePriorityMessage, false)]
+        [Obsolete(obsoletePriorityMessage)]
         public const int assetCreateMenuPriority1 = 230;
         /// <summary>Asset Create Menu priority 2</summary>
-        [Obsolete(obsoletePriorityMessage, false)]
+        [Obsolete(obsoletePriorityMessage)]
         public const int assetCreateMenuPriority2 = 241;
         /// <summary>Asset Create Menu priority 3</summary>
-        [Obsolete(obsoletePriorityMessage, false)]
+        [Obsolete(obsoletePriorityMessage)]
         public const int assetCreateMenuPriority3 = 300;
         /// <summary>Game Object Menu priority</summary>
-        [Obsolete(obsoletePriorityMessage, false)]
+        [Obsolete(obsoletePriorityMessage)]
         public const int gameObjectMenuPriority = 10;
 
         static Cubemap m_BlackCubeTexture;
@@ -418,7 +427,7 @@ namespace UnityEngine.Rendering
         {
             SetRenderTarget(cmd, colorBuffers, depthBuffer, clearFlag, Color.clear);
         }
-
+        
         /// <summary>
         /// Set the current multiple render texture.
         /// </summary>
@@ -646,6 +655,21 @@ namespace UnityEngine.Rendering
         /// <summary>
         /// Setup the current render texture using an RTHandle
         /// </summary>
+        /// <param name="cmd">ComputeCommandBuffer used for rendering commands, it must not be async.</param>
+        /// <param name="buffer">Color buffer RTHandle</param>
+        /// <param name="clearFlag">If not set to ClearFlag.None, specifies how to clear the render target after setup.</param>
+        /// <param name="clearColor">If applicable, color with which to clear the render texture after setup.</param>
+        /// <param name="miplevel">Mip level that should be bound as a render texture if applicable.</param>
+        /// <param name="cubemapFace">Cubemap face that should be bound as a render texture if applicable.</param>
+        /// <param name="depthSlice">Depth slice that should be bound as a render texture if applicable.</param>
+        public static void SetRenderTarget(ComputeCommandBuffer cmd, RTHandle buffer, ClearFlag clearFlag, Color clearColor, int miplevel = 0, CubemapFace cubemapFace = CubemapFace.Unknown, int depthSlice = -1)
+        {
+            SetRenderTarget(cmd.m_WrappedCommandBuffer, buffer, clearFlag, clearColor, miplevel, cubemapFace, depthSlice);
+        }
+
+        /// <summary>
+        /// Setup the current render texture using an RTHandle
+        /// </summary>
         /// <param name="cmd">CommandBuffer used for rendering commands</param>
         /// <param name="buffer">Color buffer RTHandle</param>
         /// <param name="clearFlag">If not set to ClearFlag.None, specifies how to clear the render target after setup.</param>
@@ -789,6 +813,37 @@ namespace UnityEngine.Rendering
 
             SetRenderTarget(cmd, colorBuffer.nameID, colorLoadAction, colorStoreAction, depthBuffer.nameID, depthLoadAction, depthStoreAction, miplevel, cubemapFace, depthSlice);
             SetViewportAndClear(cmd, colorBuffer, clearFlag, clearColor);
+        }
+
+        /// <summary>
+        /// Set the current shading rate fragment size
+        /// </summary>
+        /// <param name="cmd">CommandBuffer used for rendering commands.</param>
+        /// <param name="baseShadingRateFragmentSize">Shading rate fragment size to set</param>
+        public static void SetShadingRateFragmentSize(CommandBuffer cmd, ShadingRateFragmentSize baseShadingRateFragmentSize)
+        {
+            cmd.SetShadingRateFragmentSize(baseShadingRateFragmentSize);
+        }
+
+        /// <summary>
+        /// Set the current shading rate combiner
+        /// </summary>
+        /// <param name="cmd">CommandBuffer used for rendering commands.</param>
+        /// <param name="stage">Combiner stage to set</param>
+        /// <param name="combiner">Combiner to set</param>
+        public static void SetShadingRateCombiner(CommandBuffer cmd, ShadingRateCombinerStage stage, ShadingRateCombiner combiner)
+        {
+            cmd.SetShadingRateCombiner(stage, combiner);
+        }
+
+        /// <summary>
+        /// Set the current shading rate image
+        /// </summary>
+        /// <param name="cmd">CommandBuffer used for rendering commands.</param>
+        /// <param name="shadingRateImage">Shading rate image render target identifier to set</param>
+        public static void SetShadingRateImage(CommandBuffer cmd, in RenderTargetIdentifier shadingRateImage)
+        {
+            cmd.SetShadingRateImage(shadingRateImage);
         }
 
         /// <summary>
@@ -960,7 +1015,7 @@ namespace UnityEngine.Rendering
                 temp = string.Format("{0}x{1}{2}_{3}", width, height, mips ? "_Mips" : "", format);
             else
                 temp = string.Format("{0}x{1}x{2}{3}_{4}", width, height, depth, mips ? "_Mips" : "", format);
-            temp = String.Format("{0}_{1}_{2}", name == "" ? "Texture" : name, (dim == TextureDimension.None) ? "" : dim.ToString(), temp);
+            temp = String.Format("{0}_{1}_{2}", name?.Length == 0 ? "Texture" : name, (dim == TextureDimension.None) ? "" : dim.ToString(), temp);
 
             return temp;
         }
@@ -1282,7 +1337,7 @@ namespace UnityEngine.Rendering
             }
         }
 
-        static IEnumerable<Type> m_AssemblyTypes;
+        static IEnumerable<Type> s_AssemblyTypes;
 
         /// <summary>
         /// Returns all assembly types.
@@ -1290,23 +1345,21 @@ namespace UnityEngine.Rendering
         /// <returns>The list of all assembly types of the current domain.</returns>
         public static IEnumerable<Type> GetAllAssemblyTypes()
         {
-            if (m_AssemblyTypes == null)
+            if (s_AssemblyTypes != null) 
+                return s_AssemblyTypes;
+            
+            var typeList = new List<Type>();
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                m_AssemblyTypes = AppDomain.CurrentDomain.GetAssemblies()
-                    .SelectMany(t =>
-                    {
-                        // Ugly hack to handle mis-versioned dlls
-                        var innerTypes = new Type[0];
-                        try
-                        {
-                            innerTypes = t.GetTypes();
-                        }
-                        catch { }
-                        return innerTypes;
-                    });
+                try
+                {
+                    typeList.AddRange(assembly.GetTypes());
+                }
+                catch (Exception)
+                { }
             }
-
-            return m_AssemblyTypes;
+            s_AssemblyTypes = typeList;
+            return s_AssemblyTypes;
         }
 
         /// <summary>
@@ -1319,7 +1372,14 @@ namespace UnityEngine.Rendering
 #if UNITY_EDITOR && UNITY_2019_2_OR_NEWER
             return UnityEditor.TypeCache.GetTypesDerivedFrom<T>();
 #else
-            return GetAllAssemblyTypes().Where(t => t.IsSubclassOf(typeof(T)));
+            var derivedTypes = new List<Type>();
+            var baseType = typeof(T);
+            foreach (var type in GetAllAssemblyTypes())
+            {
+                if (type.IsSubclassOf(baseType)) 
+                    derivedTypes.Add(type);
+            }
+            return derivedTypes;
 #endif
         }
 
@@ -1614,7 +1674,36 @@ namespace UnityEngine.Rendering
         /// <param name="renderContext">Current Scriptable Render Context.</param>
         /// <param name="cmd">Command Buffer used for rendering.</param>
         /// <param name="rendererList">Renderer List to render.</param>
+        [Obsolete("Use DrawRendererList(CommandBuffer cmd, UnityEngine.Rendering.RendererList rendererList) instead. #from(6000.3) (UnityUpgradable) -> !0")]
         public static void DrawRendererList(ScriptableRenderContext renderContext, CommandBuffer cmd, UnityEngine.Rendering.RendererList rendererList)
+        {
+#if UNITY_ENABLE_CHECKS || UNITY_EDITOR
+            if (!rendererList.isValid)
+                throw new ArgumentException("Invalid renderer list provided to DrawRendererList");
+#endif
+            cmd.DrawRendererList(rendererList);
+        }
+
+        /// <summary>
+        /// Draw a renderer list.
+        /// </summary>
+        /// <param name="cmd">Command Buffer used for rendering.</param>
+        /// <param name="rendererList">Renderer List to render.</param>
+        public static void DrawRendererList(CommandBuffer cmd, UnityEngine.Rendering.RendererList rendererList)
+        {
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+            if (!rendererList.isValid)
+                throw new ArgumentException("Invalid renderer list provided to DrawRendererList");
+#endif
+            cmd.DrawRendererList(rendererList);
+        }
+
+        /// <summary>
+        /// Draw a renderer list.
+        /// </summary>
+        /// <param name="cmd">Command Buffer used for rendering.</param>
+        /// <param name="rendererList">Renderer List to render.</param>
+        public static void DrawRendererList(IRasterCommandBuffer cmd, UnityEngine.Rendering.RendererList rendererList)
         {
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
             if (!rendererList.isValid)
@@ -1708,7 +1797,10 @@ namespace UnityEngine.Rendering
         /// <typeparam name="T">Type of the enum</typeparam>
         /// <returns>Last value of the enum</returns>
         public static T GetLastEnumValue<T>() where T : Enum
-            => typeof(T).GetEnumValues().Cast<T>().Last();
+        {
+            var values = Enum.GetValues(typeof(T));
+            return (T)values.GetValue(values.Length - 1);
+        }
 
         internal static string GetCorePath()
             => "Packages/com.unity.render-pipelines.core/";
@@ -1759,6 +1851,7 @@ namespace UnityEngine.Rendering
             var path = filePath.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
             if (!path.StartsWith("Assets" + Path.DirectorySeparatorChar, StringComparison.CurrentCultureIgnoreCase))
                 throw new ArgumentException($"Path should start with \"Assets/\". Got {filePath}.", filePath);
+
             var folderPath = Path.GetDirectoryName(path);
 
             if (!UnityEditor.AssetDatabase.IsValidFolder(folderPath))
@@ -1773,6 +1866,19 @@ namespace UnityEngine.Rendering
                     rootPath = newPath + Path.DirectorySeparatorChar;
                 }
             }
+        }
+
+        /// <summary>
+        /// Returns the icon for the given type if it has an IconAttribute.
+        /// </summary>
+        /// <typeparam name="T">Type parameter</typeparam>
+        /// <returns>Valid icon texture, or null none is found</returns>
+        public static Texture2D GetIconForType<T>() where T : UnityEngine.Object
+        {
+            var iconAttribute = typeof(T).GetCustomAttribute<IconAttribute>();
+            if (iconAttribute == null || string.IsNullOrEmpty(iconAttribute.path))
+                return null;
+            return EditorGUIUtility.IconContent(iconAttribute.path)?.image as Texture2D;
         }
 #endif
 
@@ -1802,5 +1908,129 @@ namespace UnityEngine.Rendering
 
             return outCorners;
         }
+
+        /// <summary>
+        /// Return the GraphicsFormat of DepthStencil RenderTarget preferred for the current platform.
+        /// </summary>
+        /// <returns>The GraphicsFormat of DepthStencil RenderTarget preferred for the current platform.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static GraphicsFormat GetDefaultDepthStencilFormat()
+        {
+#if UNITY_SWITCH || UNITY_SWITCH2 || UNITY_EMBEDDED_LINUX || UNITY_QNX || UNITY_ANDROID
+            return GraphicsFormat.D24_UNorm_S8_UInt;
+#else
+            return GraphicsFormat.D32_SFloat_S8_UInt;
+#endif
+        }
+
+        /// <summary>
+        /// Return the GraphicsFormat of Depth-only RenderTarget preferred for the current platform.
+        /// </summary>
+        /// <returns>The GraphicsFormat of Depth-only RenderTarget preferred for the current platform.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static GraphicsFormat GetDefaultDepthOnlyFormat()
+        {
+#if UNITY_SWITCH || UNITY_SWITCH2 || UNITY_EMBEDDED_LINUX || UNITY_QNX || UNITY_ANDROID
+            return GraphicsFormatUtility.GetDepthStencilFormat(24, 0); // returns GraphicsFormat.D24_UNorm when hardware supports it
+#else
+            return GraphicsFormat.D32_SFloat;
+#endif
+        }
+
+        /// <summary>
+        /// Return the number of DepthStencil RenderTarget depth bits preferred for the current platform.
+        /// </summary>
+        /// <returns>The number of DepthStencil RenderTarget depth bits preferred for the current platform.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static DepthBits GetDefaultDepthBufferBits()
+        {
+#if UNITY_SWITCH || UNITY_SWITCH2 || UNITY_EMBEDDED_LINUX || UNITY_QNX || UNITY_ANDROID
+            return DepthBits.Depth24;
+#else
+            return DepthBits.Depth32;
+#endif
+        }
+        
+#if UNITY_EDITOR
+        /// <summary>
+        /// Populates null fields or collection elements in a target object from a source object of the same type.
+        /// </summary>
+        /// <typeparam name="T">
+        /// The type of the objects. This must be a reference type (`class`).
+        /// </typeparam>
+        /// <param name="source">
+        /// The source object from which to copy field values or collection elements. This cannot be null.
+        /// </param>
+        /// <param name="target">
+        /// The target object to populate with values from the source object. This cannot be null.
+        /// </param>
+        /// <remarks>
+        /// This method copies non-null field values or collection elements from the source object to the target object. 
+        /// Both objects must be of the same type, and derived or base types are not allowed. Fields are updated only if they 
+        /// are null in the target. If a field is a collection implementing `IList`, the method attempts to copy elements that 
+        /// are null in the target collection.
+        ///
+        /// **Type restrictions**:  
+        /// - `T` must be a reference type.
+        /// - `source` and `target` must be of the exact same type, not derived or base types.
+        /// - Collections must implement `IList` and have the same length in both source and target for element-by-element copying.
+        /// </remarks>
+        public static void PopulateNullFieldsFrom<T>(T source, T target)
+            where T : class
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            if (target == null)
+                throw new ArgumentNullException(nameof(target));
+            
+            if (source.GetType() != typeof(T) || target.GetType() != typeof(T))
+            {
+                throw new ArgumentException("Source and target must be of the exact same type. Derived or base types are not allowed.");
+            }
+
+            var type = typeof(T);
+            var fields = type.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            foreach (System.Reflection.FieldInfo field in fields)
+            {
+                var sourceValue = field.GetValue(source);
+                var targetValue = field.GetValue(target);
+
+                // Check if the field is a collection (implements ICollection)
+                if (typeof(IList).IsAssignableFrom(field.FieldType))
+                {
+                    // Handle collection population
+                    PopulateIListFields( ref sourceValue, ref targetValue);
+                    field.SetValue(target, targetValue);
+                }
+                else
+                {
+                    // Handle individual field population
+                    if (targetValue == null) 
+                        field.SetValue(target, sourceValue); // Copy if target is null
+                }
+            }
+            // Generic method to populate arrays
+            static void PopulateIListFields(ref object source, ref object target)
+            {
+                if (source is not IList sourceCollection) 
+                    return;
+
+                if (target is not IList targetCollection)
+                {
+                    target = sourceCollection;
+                    return;
+                }
+
+                if (sourceCollection.Count != targetCollection.Count)
+                    return;
+
+                for (int i = 0; i < targetCollection.Count; i++)
+                {
+                    sourceCollection[i] ??= targetCollection[i];
+                }
+            }
+        }
+#endif
     }
 }

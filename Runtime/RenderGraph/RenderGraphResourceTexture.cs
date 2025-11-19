@@ -7,20 +7,70 @@ using UnityEngine.Scripting.APIUpdating;
 
 namespace UnityEngine.Rendering.RenderGraphModule
 {
-    internal struct TextureAccess
+    internal readonly struct TextureAccess
     {
-        public TextureHandle textureHandle;
-        public int mipLevel;
-        public int depthSlice;
-        public AccessFlags flags;
+        public readonly TextureHandle textureHandle;
+        public readonly int mipLevel;
+        public readonly int depthSlice;
+        public readonly AccessFlags flags;
 
-        public TextureAccess(TextureHandle handle, AccessFlags flags, int mipLevel, int depthSlice)
+        public TextureAccess(in TextureHandle handle, AccessFlags flags, int mipLevel, int depthSlice)
         {
             this.textureHandle = handle;
             this.flags = flags;
             this.mipLevel = mipLevel;
             this.depthSlice = depthSlice;
         }
+
+        public TextureAccess(in TextureAccess access, in TextureHandle handle)
+        {
+            this.textureHandle = handle;
+            this.flags = access.flags;
+            this.mipLevel = access.mipLevel;
+            this.depthSlice = access.depthSlice;
+        }
+    }
+
+    /// <summary>
+    /// Represents the origin of UV coordinates for a texture. It represents how Unity stores the content,
+    /// independent of the active graphics API. The UV coordinate (0,0) in the shader will either sample
+    /// the bottom left pixel of the image, or the top left pixel (flipped).
+    /// </summary>
+    public enum TextureUVOrigin
+    {
+        /// <summary>
+        /// The UV coordinate (0,0) in a shader will sample the BOTTOM left texel of the texture. This matched the OpenGL standard, which is also the Unity standard for textures.
+        /// To ensure this behavior, Unity will store the content for texture upside down (flipped) on modern graphics APIs.
+        /// </summary>
+        BottomLeft,
+        /// <summary>
+        /// The UV coordinate (0,0) in a shader will sample the TOP left texel of the texture. This matches the standard of modern graphics APIs (Vulkan, DX, Metal,...).
+        /// The actual backbuffer will have a TopLeft orientation when a modern graphics API is active.
+        /// </summary>
+        TopLeft
+    }
+
+    /// <summary>
+    /// Represents the origin of UV coordinates for a texture. It represents how Unity stores the content,
+    /// independent of the active graphics API. The UV coordinate (0,0) in the shader will either sample
+    /// the bottom left pixel of the image, or the top left pixel (flipped).
+    /// </summary>
+    internal enum TextureUVOriginSelection
+    {
+        /// <summary>
+        /// The UV coordinate (0,0) in a shader will sample the BOTTOM left texel of the texture. This matched the OpenGL standard, which is also the Unity standard for textures.
+        /// To ensure this behavior, Unity will store the content for texture upside down (flipped) on modern graphics APIs.
+        /// </summary>
+        BottomLeft,
+        /// <summary>
+        /// The UV coordinate (0,0) in a shader will sample the TOP left texel of the texture. This matches the standard of modern graphics APIs (Vulkan, DX, Metal,...).
+        /// The actual backbuffer will have a TopLeft orientation when a modern graphics API is active.
+        /// </summary>
+        TopLeft,
+        /// <summary>
+        /// The orientation has not been assigned yet.
+        /// </summary>
+        Unknown
     }
 
 
@@ -47,7 +97,7 @@ namespace UnityEngine.Rendering.RenderGraphModule
     /// </summary>
     [DebuggerDisplay("Texture ({handle.index})")]
     [MovedFrom(true, "UnityEngine.Experimental.Rendering.RenderGraphModule", "UnityEngine.Rendering.RenderGraphModule")]
-    public struct TextureHandle
+    public readonly struct TextureHandle
     {
         private static TextureHandle s_NullHandle = new TextureHandle();
 
@@ -57,9 +107,9 @@ namespace UnityEngine.Rendering.RenderGraphModule
         /// <value>A null texture handle.</value>
         public static TextureHandle nullHandle { get { return s_NullHandle; } }
 
-        internal ResourceHandle handle;
+        internal readonly ResourceHandle handle;
 
-        private bool builtin;
+        private readonly bool builtin;
 
         internal TextureHandle(in ResourceHandle h)
         {
@@ -162,7 +212,7 @@ namespace UnityEngine.Rendering.RenderGraphModule
         public int width;
         ///<summary>Texture height.</summary>
         public int height;
-        ///<summary>Number of texture slices..</summary>
+        ///<summary>Number of texture slices.</summary>
         public int slices;
         ///<summary>Texture scale.</summary>
         public Vector2 scale;
@@ -196,10 +246,25 @@ namespace UnityEngine.Rendering.RenderGraphModule
         public bool useDynamicScale;
         ///<summary>[See Dynamic Resolution documentation](https://docs.unity3d.com/Manual/DynamicResolution.html)</summary>
         public bool useDynamicScaleExplicit;
-        ///<summary>Memory less flag.</summary>
+        ///<summary>
+        ///[See Memoryless documentation](https://docs.unity3d.com/ScriptReference/RenderTextureMemoryless.html)
+        ///</summary>
+        ///<remarks>
+        ///If this is a Render Graph created resource only used in a single raster render pass, and not sampled (no UseTexture() usage), Render Graph will automatically set this resource as memoryless.
+        ///</remarks>
         public RenderTextureMemoryless memoryless;
         ///<summary>Special treatment of the VR eye texture used in stereoscopic rendering.</summary>
         public VRTextureUsage vrUsage;
+
+        /// <summary>
+        /// Set to true if the texture is to be used as a shading rate image.
+        /// </summary>
+        /// <remarks>
+        /// Width and height are usually in pixels but if enableShadingRate is set to true, width and height are in tiles.
+        /// See also <a href="https://docs.unity3d.com/Manual/variable-rate-shading">Variable Rate Shading</a>.
+        /// </remarks>
+        public bool enableShadingRate;
+
         ///<summary>Texture name.</summary>
         public string name;
 #if UNITY_2020_2_OR_NEWER
@@ -229,7 +294,7 @@ namespace UnityEngine.Rendering.RenderGraphModule
         {
             get { return (DepthBits)GraphicsFormatUtility.GetDepthBits(format); }
             set
-            {                
+            {
                 if (value == DepthBits.None)
                 {
                     if( !GraphicsFormatUtility.IsDepthStencilFormat(format) )
@@ -240,7 +305,7 @@ namespace UnityEngine.Rendering.RenderGraphModule
                 else
                 {
                     format = GraphicsFormatUtility.GetDepthStencilFormat((int)value);
-                }                
+                }
             }
         }
 
@@ -372,6 +437,7 @@ namespace UnityEngine.Rendering.RenderGraphModule
             clearBuffer = true;
             clearColor = Color.black;
             discardBuffer = false;
+            enableShadingRate = input.enableShadingRate;
         }
 
         /// <summary>
@@ -403,7 +469,7 @@ namespace UnityEngine.Rendering.RenderGraphModule
                     break;
                 case TextureSizeMode.Functor:
                     if (func != null)
-                        hashCode.Append(func);
+                        hashCode.Append(DelegateHashCodeUtils.GetFuncHashCode(func));
                     break;
                 case TextureSizeMode.Scale:
                     hashCode.Append(scale);
@@ -429,6 +495,7 @@ namespace UnityEngine.Rendering.RenderGraphModule
 #if UNITY_2020_2_OR_NEWER
             hashCode.Append(fastMemoryDesc.inFastMemory);
 #endif
+            hashCode.Append(enableShadingRate);
             return hashCode.value;
         }
 
@@ -447,7 +514,6 @@ namespace UnityEngine.Rendering.RenderGraphModule
                 TextureSizeMode.Functor => RTHandles.CalculateDimensions(func),
                 _ => throw new ArgumentOutOfRangeException()
             };
-
         }
     }
 
@@ -455,6 +521,8 @@ namespace UnityEngine.Rendering.RenderGraphModule
     class TextureResource : RenderGraphResource<TextureDesc, RTHandle>
     {
         static int m_TextureCreationIndex;
+
+        internal TextureUVOriginSelection textureUVOrigin;
 
         public override string GetName()
         {
@@ -474,21 +542,42 @@ namespace UnityEngine.Rendering.RenderGraphModule
             // Textures are going to be reused under different aliases along the frame so we can't provide a specific name upon creation.
             // The name in the desc is going to be used for debugging purpose and render graph visualization.
             if (name == "")
-                name = $"RenderGraphTexture_{m_TextureCreationIndex++}";           
+                name = $"RenderGraphTexture_{m_TextureCreationIndex++}";
+
+            RTHandleAllocInfo rtAllocInfo = new RTHandleAllocInfo(name)
+            {
+                slices = desc.slices,
+                format = desc.format,
+                filterMode = desc.filterMode,
+                wrapModeU = desc.wrapMode,
+                wrapModeV = desc.wrapMode,
+                wrapModeW = desc.wrapMode,
+                dimension = desc.dimension,
+                enableRandomWrite = desc.enableRandomWrite,
+                useMipMap = desc.useMipMap,
+                autoGenerateMips = desc.autoGenerateMips,
+                anisoLevel = desc.anisoLevel,
+                mipMapBias = desc.mipMapBias,
+                isShadowMap = desc.isShadowMap,
+                msaaSamples = (MSAASamples)desc.msaaSamples,
+                bindTextureMS = desc.bindTextureMS,
+                useDynamicScale = desc.useDynamicScale,
+                useDynamicScaleExplicit = desc.useDynamicScaleExplicit,
+                memoryless = desc.memoryless,
+                vrUsage = desc.vrUsage,
+                enableShadingRate = desc.enableShadingRate,
+            };
 
             switch (desc.sizeMode)
             {
                 case TextureSizeMode.Explicit:
-                    graphicsResource = RTHandles.Alloc(desc.width, desc.height, desc.format, desc.slices, desc.filterMode, desc.wrapMode, desc.dimension, desc.enableRandomWrite,
-                        desc.useMipMap, desc.autoGenerateMips, desc.isShadowMap, desc.anisoLevel, desc.mipMapBias, desc.msaaSamples, desc.bindTextureMS, desc.useDynamicScale, desc.useDynamicScaleExplicit, desc.memoryless, desc.vrUsage, name);
+                    graphicsResource = RTHandles.Alloc(desc.width, desc.height, rtAllocInfo);
                     break;
                 case TextureSizeMode.Scale:
-                    graphicsResource = RTHandles.Alloc(desc.scale, desc.format, desc.slices, desc.filterMode, desc.wrapMode, desc.dimension, desc.enableRandomWrite,
-                        desc.useMipMap, desc.autoGenerateMips, desc.isShadowMap, desc.anisoLevel, desc.mipMapBias, desc.msaaSamples, desc.bindTextureMS, desc.useDynamicScale, desc.useDynamicScaleExplicit, desc.memoryless, desc.vrUsage, name);
+                    graphicsResource = RTHandles.Alloc(desc.scale, rtAllocInfo);
                     break;
                 case TextureSizeMode.Functor:
-                    graphicsResource = RTHandles.Alloc(desc.func, desc.format, desc.slices, desc.filterMode, desc.wrapMode, desc.dimension, desc.enableRandomWrite,
-                        desc.useMipMap, desc.autoGenerateMips, desc.isShadowMap, desc.anisoLevel, desc.mipMapBias, desc.msaaSamples, desc.bindTextureMS, desc.useDynamicScale, desc.useDynamicScaleExplicit, desc.memoryless, desc.vrUsage, name);
+                    graphicsResource = RTHandles.Alloc(desc.func, rtAllocInfo);
                     break;
             }
         }

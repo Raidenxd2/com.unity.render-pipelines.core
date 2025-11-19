@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Collections.Generic;
 using UnityEditor.Build;
@@ -117,6 +118,21 @@ namespace UnityEditor.Rendering
                     if (!bakingSet.cellSharedDataAsset.IsValid()) // Not baked
                         continue;
 
+                    // APV doesn't work with WebGL, so let's warn the user.
+                    if (buildPlayerContext.BuildPlayerOptions.target == BuildTarget.WebGL)
+                    {
+                        // WebGPU does support APV so only warn if WebGPU is not enabled.
+                        GraphicsDeviceType[] apis = PlayerSettings.GetGraphicsAPIs(BuildTarget.WebGL);
+                        var index = Array.FindIndex(apis, x => x == GraphicsDeviceType.WebGPU);
+                        if (index == -1)
+                        {
+                            Debug.LogError(
+                                $"The scene '{scene}' contains baked Adaptive Probe Volumes, but the build target is WebGL. " +
+                                "Adaptive Probe Volumes are not supported when targeting WebGL.");
+                            continue;
+                        }
+                    }
+
                     var bakingSetGUID = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(bakingSet));
                     var basePath = Path.Combine(tempStreamingAssetsPath, bakingSetGUID);
 
@@ -141,7 +157,11 @@ namespace UnityEditor.Rendering
                             IncludeStreamableAsset(scenario.Value.cellOptionalDataAsset, basePath, useStreamingAsset);
                         else
                             StripStreambleAsset(scenario.Value.cellOptionalDataAsset);
-                        IncludeStreamableAsset(scenario.Value.cellProbeOcclusionDataAsset, basePath, useStreamingAsset);
+
+                        if (bakingSet.bakedProbeOcclusion)
+                            IncludeStreamableAsset(scenario.Value.cellProbeOcclusionDataAsset, basePath, useStreamingAsset);
+                        else
+                            StripStreambleAsset(scenario.Value.cellProbeOcclusionDataAsset);
                     }
 
                     s_BakingSetsProcessedLastBuild.Add(bakingSet);

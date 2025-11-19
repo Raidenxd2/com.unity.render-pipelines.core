@@ -10,14 +10,31 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 Version Updated
 The version number for this package has increased due to a version update of a related graphics package.
 
+## [17.2.0] - 2025-05-14
+
+This version is compatible with Unity 6000.2.0b2.
+
+### Fixed
+- Fixed an editor crash that could sometimes occur when throwing an exception from `Dispose()` in a custom SRP renderer feature.
+- Fixed a memory leak that occurred when entering and exiting Play mode in the Editor.
+- Fixed an issue where the *Add Override* button in the Global Volume's Inspector panel did not work correctly on Linux.
+- Fix out of bounds read in CoreUnsafeUtils.FixedBufferStringQueue.TryPop when the remaining bytes in the buffer is less than 4
+
 ## [17.0.3] - 2025-02-13
 
-This version is compatible with Unity 6000.0.39f1.
+This version is compatible with Unity 6000.2.0a5.
 
 ### Added
+- Added Variable Rate Shading API support for (Raster)CommandBuffer(s), RenderGraph and RTHandles.
+Various VRS utilities.
 - helper functions to Render Graph.
 
 ### Changed
+- Modified the Rendering Debugger to prevent resource transfers in retail builds.
+- Rendering Debugger - Moved the GPU Resident Drawer to the Rendering Section.
+- Rendering Debugger - Moved Render Graph to the Rendering Section.
+- Added an API to query the preferred depth-only format for target platforms.
+- Improved Depth usage performance for some platforms.
 - Improved the Native Render Pass CPU performance by implementing a Render Pass pooling system (URP RG).
 - Reworked the additional properties.
 - Improved Render Graph warning message in URP when missing RecordRenderGraph implementation.
@@ -27,6 +44,27 @@ This version is compatible with Unity 6000.0.39f1.
 - Added What's New in Unity 6 to SRP Core Package.
 
 ### Fixed
+- Fixed an issue in Render Graph Viewer where text would overlap after searching in the Pass List.
+- Fix pass culling corner case where resources are never deallocated when the last pass using them is culled
+- Fix RenderGraphObjectPool and GetTempMaterialPropertyBlock() usage in URP RenderGraph
+- Fix async compute corner case where URP RenderGraph was waiting for a resource not written by any pass
+- Serialization errors are thrown when "com.unity.render-pipelines.core" is added as a custom package
+- Add missing check for count parameter in DynamicArray.FindIndex
+- Fixed incorrect format of default shadow texture
+- Fixed render graph incorrectly handling rendering to array slices and mipmaps other than 0 in some cases.
+- Fixed an issue where Lens Flare was not rendering properly in OpenGLES3.
+- Fixed missing STP shaders & visual artifacts when targeting GLCore renderer.
+- Render Graph Viewer - Improved UI lock when searching on side panels.
+- Render Graph Viewer - Padding corrected on burger menu on the side panels.
+- Fixed the crash happening when APV tried to stream in block data.
+- Fixed VRS initialization errors. Now init may fail explicitly and must be checked by the user code.
+- Fixed Rendering Debugger - Silent crash when selecting a Volume component with public RTHandles.
+- Fixed Transient Resources support in Native RenderPass Render Graph (used in URP).
+- Fixed an issue where the Adaptive Probe Volume (APV) streaming buffer could leak into the current pool when chunk sizes were mismatched, leading to memory contamination and potential crashes.
+- Fixed an issue in the Render Graph Viewer where text overlapped after performing a search in the Pass List.
+- Fixed an issue in pass culling where resources were not deallocated if the last pass using them was culled.
+- Fixed `RenderGraphObjectPool` and `GetTempMaterialPropertyBlock()` usage in URP RenderGraph.
+- Fixed an issue in URP Render Graph where, in an async compute edge case, it was waiting for a resource that was not written by any pass.
 - Added messaging to the Rendering Debugger UI to make it clearer that GPU Resident Drawer settings do not work if GPU Resident Drawer is not enabled. 
 - GPU Resident Drawer: Changed BatchRendererGroup variants was not reinitializing the system.
 - Improved the compiler logic that detects if the current render target is being used outside the current native render pass (e.g., when the pass is broken up by an unsafe pass), and determines the store action for this case. The fix now ensures that the `StoreAndResolve` action is used when the resource is read by an Unsafe Pass. 

@@ -38,6 +38,15 @@
 #define GLES3_1_AEP 0
 #endif
 
+// GLES3 causes a performance regression in some devices when using CBUFFER.
+// WebGL needs to put LightShadow uniforms into a uniform buffer,
+// despite being a GLES3 API. Some mobile devices, such as Adreno GPUs,
+// have a small GL_MAX_FRAGMENT_UNIFORM_VECTORS limit, causing Lit shaders
+// to fail on those devices. https://jira.unity3d.com/browse/UUM-87232
+#if !defined(UNITY_PLATFORM_WEBGL)
+#define LIGHT_SHADOWS_NO_CBUFFER
+#endif
+
 // Initialize arbitrary structure with zero values.
 // Do not exist on some platform, in this case we need to have a standard name that call a function that will initialize all parameters to 0
 #define ZERO_INITIALIZE(type, name) name = (type)0;
@@ -72,17 +81,15 @@
 #define TEXTURECUBE_SHADOW(textureName)         TEXTURECUBE(textureName)
 #define TEXTURECUBE_ARRAY_SHADOW(textureName)   TEXTURECUBE_ARRAY(textureName)
 
-#if SHADER_AVAILABLE_RANDOMWRITE
 #define TYPED_TEXTURE2D(type, textureName)       Texture2D<type> textureName
 #define TYPED_TEXTURE2D_ARRAY(type, textureName) Texture2DArray<type> textureName
 #define TYPED_TEXTURE3D(type, textureName)       Texture3D<type> textureName
+
+#if SHADER_AVAILABLE_RANDOMWRITE
 #define RW_TEXTURE2D(type, textureName)          RWTexture2D<type> textureName
 #define RW_TEXTURE2D_ARRAY(type, textureName)    RWTexture2DArray<type> textureName
 #define RW_TEXTURE3D(type, textureName)          RWTexture3D<type> textureName
 #else
-#define TYPED_TEXTURE2D(type, textureName)       ERROR_ON_UNSUPPORTED_FUNCTION(TypedTexture2D)
-#define TYPED_TEXTURE2D_ARRAY(type, textureName) ERROR_ON_UNSUPPORTED_FUNCTION(TypedTexture2DArray)
-#define TYPED_TEXTURE3D(type, textureName)       ERROR_ON_UNSUPPORTED_FUNCTION(TypedTexture3D)
 #define RW_TEXTURE2D(type, textureName)          ERROR_ON_UNSUPPORTED_FUNCTION(RWTexture2D)
 #define RW_TEXTURE2D_ARRAY(type, textureName)    ERROR_ON_UNSUPPORTED_FUNCTION(RWTexture2DArray)
 #define RW_TEXTURE3D(type, textureName)          ERROR_ON_UNSUPPORTED_FUNCTION(RWTexture3D)

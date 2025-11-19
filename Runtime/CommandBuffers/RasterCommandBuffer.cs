@@ -5,6 +5,7 @@ using Unity.Collections;
 using UnityEngine.Profiling;
 using Unity.Profiling;
 using UnityEngine.Rendering.RenderGraphModule;
+using UnityEngine.Experimental.Rendering;
 
 // NOTE  NOTE  NOTE  NOTE  NOTE  NOTE  NOTE  NOTE  NOTE
 //
@@ -257,6 +258,15 @@ namespace UnityEngine.Rendering
         /// <summary>Wraps [InvokeOnRenderObjectCallbacks](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.InvokeOnRenderObjectCallbacks.html) on a CommandBuffer.</summary>
 
         public void InvokeOnRenderObjectCallbacks()  {  m_WrappedCommandBuffer.InvokeOnRenderObjectCallbacks(); }
+
+        /// <summary>Wraps [SetShadingRateFragmentSize](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.SetShadingRateFragmentSize.html) on a CommandBuffer.</summary>
+        /// <param name="shadingRateFragmentSize">[See CommandBuffer documentation](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.SetShadingRateFragmentSize.html)</param>
+        public void SetShadingRateFragmentSize(ShadingRateFragmentSize shadingRateFragmentSize)  {  m_WrappedCommandBuffer.SetShadingRateFragmentSize(shadingRateFragmentSize); }
+
+        /// <summary>Wraps [SetShadingRateCombiner](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.SetShadingRateCombiner.html) on a CommandBuffer.</summary>
+        /// <param name="stage">[See CommandBuffer documentation](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.SetShadingRateCombiner.html)</param>
+        /// <param name="combiner">[See CommandBuffer documentation](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.SetShadingRateCombiner.html)</param>
+        public void SetShadingRateCombiner(ShadingRateCombinerStage stage, ShadingRateCombiner combiner)  {  m_WrappedCommandBuffer.SetShadingRateCombiner(stage, combiner); }
 
         /// <summary>Wraps [DrawMesh](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.DrawMesh.html) on a CommandBuffer.</summary>
         /// <param name="mesh">[See CommandBuffer documentation](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.DrawMesh.html)</param>
