@@ -1,3 +1,4 @@
+#if !KILLITMYSELF_URP
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -1311,3 +1312,4 @@ namespace UnityEditor.Rendering
         #endregion
     }
 }
+#endif

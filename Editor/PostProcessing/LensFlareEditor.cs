@@ -1,3 +1,4 @@
+#if !KILLITMYSELF_URP
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -22,3 +23,4 @@ namespace UnityEditor
         }
     }
 }
+#endif

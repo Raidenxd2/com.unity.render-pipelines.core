@@ -6,21 +6,15 @@
         "Unity.Collections",
         "Unity.Burst"
     ],
-    "includePlatforms": [],
-    "excludePlatforms": [
-        "WebGL"
+    "includePlatforms": [
+        "Editor"
     ],
+    "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [
-        {
-            "name": "com.unity.modules.assetbundle",
-            "expression": "1.0.0",
-            "define": "ENABLE_ASSET_BUNDLE"
-        }
-    ],
+    "versionDefines": [],
     "noEngineReferences": false
 }

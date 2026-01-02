@@ -1,3 +1,4 @@
+#if !KILLITMYSELF_URP
 namespace UnityEngine.Rendering
 {
     [GenerateHLSL]
@@ -7,3 +8,4 @@ namespace UnityEngine.Rendering
         FogOpacity = (1 << 2),
     }
 }
+#endif

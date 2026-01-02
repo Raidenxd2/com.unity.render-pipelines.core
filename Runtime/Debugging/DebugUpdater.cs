@@ -19,14 +19,15 @@ namespace UnityEngine.Rendering
         ScreenOrientation m_Orientation;
         bool m_RuntimeUiWasVisibleLastFrame = false;
 
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void RuntimeInit()
         {
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
+
             if (DebugManager.instance.enableRuntimeUI)
                 EnableRuntime();
-#endif
         }
+#endif
 
         internal static void SetEnabled(bool enabled)
         {

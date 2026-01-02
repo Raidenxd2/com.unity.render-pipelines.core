@@ -51,38 +51,10 @@ namespace UnityEditor.Rendering
             //We can check only the first as we don't support multiple pipeline type in player
             var asset = renderPipelineAssets[0];
             currentRenderPipelineAssetType = asset.GetType();
-
-            CheckGPUResidentDrawerUsage();
         }
 
         private static CoreBuildData CreateInstance()
             => new(EditorUserBuildSettings.activeBuildTarget);
-
-        private void CheckGPUResidentDrawerUsage()
-        {
-            foreach (var renderPipelineAsset in renderPipelineAssets)
-            {
-                if (renderPipelineAsset is IGPUResidentRenderPipeline gpuResidentPipelineAsset
-                    && gpuResidentPipelineAsset.IsGPUResidentDrawerSupportedBySRP())
-                {
-                    // Record if any pipeline supports the GPU resident drawer
-                    pipelineSupportGPUResidentDrawer = true;
-
-                    // If any pipeline already has GPU resident drawer enabled, then record this and also early out
-                    if (gpuResidentPipelineAsset.gpuResidentDrawerSettings.mode != GPUResidentDrawerMode.Disabled)
-                    {
-                        playerNeedGPUResidentDrawer = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!playerNeedGPUResidentDrawer)
-                return;
-
-            GraphicsSettings.GetRenderPipelineSettings<GPUResidentDrawerResources>()
-                .ForEachFieldOfType<ComputeShader>(computeShader => computeShaderCache.Add(computeShader.GetInstanceID(), computeShader));
-        }
 
         /// <summary>
         /// Dispose all the gathered data for building

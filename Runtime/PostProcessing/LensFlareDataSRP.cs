@@ -1,3 +1,4 @@
+#if !KILLITMYSELF_URP
 using UnityEngine.Serialization;
 
 namespace UnityEngine.Rendering
@@ -498,3 +499,4 @@ namespace UnityEngine.Rendering
         public LensFlareDataElementSRP[] elements;
     }
 }
+#endif
